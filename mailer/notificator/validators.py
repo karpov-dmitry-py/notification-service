@@ -1,0 +1,3 @@
+# todo
+class NotificationValidator:
+    pass
