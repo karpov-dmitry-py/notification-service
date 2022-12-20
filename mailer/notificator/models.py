@@ -64,9 +64,9 @@ class Customer(models.Model):
 class Message(models.Model):
     created_at = models.DateTimeField(verbose_name='Дата и время создания (отправки)', auto_now_add=True)
     status = models.CharField(verbose_name='Статус', choices=MessageStatus.as_model_choices(), max_length=100)
-    notification = models.ForeignKey(Notification, on_delete=models.PROTECT, related_name='messages',
+    notification = models.ForeignKey(Notification, on_delete=models.CASCADE, related_name='messages',
                                      verbose_name='Рассылка')
-    customer = models.ForeignKey(Customer, on_delete=models.PROTECT, related_name='messages', verbose_name='Клиент')
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='messages', verbose_name='Клиент')
 
     class Meta:
         db_table = 'message'
