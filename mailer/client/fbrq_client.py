@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 import requests
 
 from .fbrq_client_datastruct import NotificationMessage
+from utils.logging import error
 
 
 class FbrqClientInterface(ABC):
@@ -38,7 +39,9 @@ class FbrqClient(FbrqClientInterface):
             resp = self._session.post(api_url, json=message.as_dict())
             return resp.status_code, resp.text
         except (requests.ConnectionError, requests.ConnectTimeout, Exception) as err:
-            return 500, f'querying url "{api_url}" resulted in an error: {str(err)}'
+            err = f'[msg {message.id}] querying url "{api_url}" resulted in an error: {str(err)}'
+            error(err)
+            return 500, err
 
 
 if __name__ == '__main__':

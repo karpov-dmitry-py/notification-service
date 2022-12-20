@@ -5,6 +5,7 @@ from django.db import models
 
 from .models_datastruct import MessageStatus
 from utils.time import now
+from utils.validation import parse_mobile_provider_prefix
 
 
 # noinspection PyUnresolvedReferences,PyMethodMayBeStatic
@@ -30,8 +31,11 @@ class Notification(models.Model):
 
     def requires_processing(self) -> bool:
         _now = now()
-        return self.datetime_to_python(self.start_at) <= _now < self.datetime_to_python(
+        return self.datetime_to_python(self.start_at) < _now < self.datetime_to_python(
             self.stop_at) and not self.messages.all().count()
+
+    def can_be_altered(self) -> bool:
+        return not self.messages.all().count()
 
 
 class Customer(models.Model):
@@ -48,6 +52,13 @@ class Customer(models.Model):
 
     def __str__(self):
         return f'id {self.pk}: тел {self.phone}, тег {self.tag}, часовой пояс {self.time_zone}'
+
+    def save(self, *args, **kwargs):
+        parsed_prefix = parse_mobile_provider_prefix(str(self.phone))
+        if parsed_prefix:
+            self.mobile_provider_prefix = parsed_prefix
+
+        super().save(*args, **kwargs)
 
 
 class Message(models.Model):

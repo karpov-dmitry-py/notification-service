@@ -15,6 +15,7 @@ class CustomerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer
         fields = ['id', 'phone', 'mobile_provider_prefix', 'tag', 'time_zone']
+        read_only_fields = ['mobile_provider_prefix', ]
 
 
 class MessageSerializer(serializers.ModelSerializer):

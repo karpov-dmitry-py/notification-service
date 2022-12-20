@@ -1,13 +1,14 @@
-import datetime
 import time
 from abc import ABC, abstractmethod
-from datetime import timedelta
 
 import notificator.models
 from notificator.models import Notification
 from notificator.models import Customer
 from notificator.models import Message
 from notificator.models_datastruct import MessageStatus
+
+from notificator.metrics import messages_total_sent
+from notificator.metrics import messages_total_failed
 
 from client.fbrq_client import FbrqClientInterface
 from client.fbrq_client import FbrqClient
@@ -46,10 +47,10 @@ class NotificationService(NotificationServiceInterface):
 
     def process_notifications(self) -> None:
         log(f'processing jobs (notifications) by scheduler')
-        now = datetime.datetime.utcnow()
+        _now = now()
         jobs = Notification.objects. \
-            filter(start_at__lte=now). \
-            filter(stop_at__gt=now)
+            filter(start_at__lte=_now). \
+            filter(stop_at__gt=_now)
 
         job_count = len(jobs)
         log(f'total of {job_count} jobs are available for processing')
@@ -66,8 +67,7 @@ class NotificationService(NotificationServiceInterface):
             log(f'job {notification_id} not found')
             return
 
-        if instance:
-            self._process_notification(instance)
+        self._process_notification(instance)
 
     def _process_notification(self, notification: Notification) -> None:
         job_id = notification.pk
@@ -89,8 +89,7 @@ class NotificationService(NotificationServiceInterface):
 
         job_processed_customer_count = 0
         for customer in customers:
-            _now = now()
-            if _now >= notification.datetime_to_python(notification.stop_at):
+            if now() >= notification.datetime_to_python(notification.stop_at):
                 log(f"job {job_id} has expired, total job's customers (messages) "
                     f"processed: {job_processed_customer_count}")
                 return
@@ -119,11 +118,12 @@ class NotificationService(NotificationServiceInterface):
                 msg.status = MessageStatus.sent.name
                 msg.save()
                 log(f'message {msg.pk} successfully sent on a try # {current_try_number + 1}')
+                messages_total_sent.labels(tag=str(notification.pk)).inc()
                 return
 
-            time.sleep(1)
+            time.sleep(0.5)
 
+        log(f'failed to send message {msg.pk} after {self._notification_send_max_tries} tries')
         msg.status = MessageStatus.failed.name
         msg.save()
-        log(f'failed to send message {msg.pk} after {self._notification_send_max_tries} tries')
-        return
+        messages_total_failed.labels(tag=str(notification.pk)).inc()
